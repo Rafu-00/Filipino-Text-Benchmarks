@@ -94,7 +94,7 @@ def evaluate(model, criterion, valid_loader, device=None):
 # Run full finetuning
 def run_finetuning(args):
     torch.manual_seed(args.seed)
-    device = torch.device('cuda' if torch.cuda.is_available() and not args.no_cuda else 'cpu')
+    device = torch.device('mps' if torch.backends.mps.is_available() and not args.no_cuda else 'cpu')
 
     # Get text columns
     t_columns = args.text_columns.split(',')
