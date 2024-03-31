@@ -1,6 +1,7 @@
 import argparse
 from utils.training import run_finetuning
 from utils.data import str2bool
+import line_profiler
 
 def main():
     parser = argparse.ArgumentParser()

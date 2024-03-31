@@ -4,3 +4,4 @@ sweeps/*
 *.pt
 finetuned_distilbert/
 finetuned_electra/
+__pycache__/
