@@ -12,6 +12,7 @@ import hashlib
 
 from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification
 from transformers import AdamW, get_linear_schedule_with_warmup
+import line_profiler
 
 try:
     from apex import amp 
@@ -92,6 +93,7 @@ def evaluate(model, criterion, valid_loader, device=None):
     return valid_loss, valid_acc
 
 # Run full finetuning
+@line_profiler.profile
 def run_finetuning(args):
     torch.manual_seed(args.seed)
     device = torch.device('mps' if torch.backends.mps.is_available() and not args.no_cuda else 'cpu')
