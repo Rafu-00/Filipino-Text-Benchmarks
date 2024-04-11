@@ -1,0 +1,252 @@
+================================================== 
+CONFIGURATION 
+==================================================
+pretrained: jcblaise/distilbert-tagalog-base-cased
+checkpoint: finetuned_distilbert
+train_data: Filipino-Text-Benchmarks/data/hatespeech/train.csv
+valid_data: Filipino-Text-Benchmarks/data/hatespeech/valid.csv
+test_data: Filipino-Text-Benchmarks/data/hatespeech/test.csv
+data_pct: 1.0
+text_columns: text
+label_columns: label
+retokenize_data: False
+save_cache: True
+msl: 128
+do_train: True
+do_eval: True
+batch_size: 32
+optimizer: adam
+adam_b1: 0.9
+adam_b2: 0.999
+accumulation: 1
+add_token: [LINK],[MENTION],[HASHTAG]
+random_init: False
+weight_decay: 1e-08
+learning_rate: 0.0002
+adam_epsilon: 1e-06
+use_scheduler: True
+warmup_pct: 0.1
+epochs: 3
+seed: 42
+no_cuda: False
+dont_save: False
+fp16: False
+opt_level: O1
+use_wandb: False
+wandb_project_name: None
+wandb_username: None
+
+================================================== 
+CONFIGURE FINETUNING SETUP 
+==================================================
+Addded 3 special tokens: [LINK],[MENTION],[HASHTAG]
+Producing dataset cache. This will take a while.
+Saving data cache
+Preprocessing finished. Time elapsed: 0.56s
+Loading from pretrained checkpoint
+Model has 66,240,770 trainable parameters
+Using learning rate 2.0000E-04 and weight decay 1.0000E-08 with scheduler using warmup pct 0.1
+
+================================================== 
+TRAINING 
+==================================================
+Training batches: 313 | Validation batches: 133
+Epoch   1 | Train Loss 0.5851 | Train Acc 0.6832 | Valid Loss 0.5219 | Valid Acc 0.7491
+Epoch   2 | Train Loss 0.4406 | Train Acc 0.7921 | Valid Loss 0.5122 | Valid Acc 0.7592
+Epoch   3 | Train Loss 0.2509 | Train Acc 0.8985 | Valid Loss 0.6510 | Valid Acc 0.7580
+
+================================================== 
+BEGIN EVALUATION PROPER 
+==================================================
+Producing test data cache. This will take a while.
+Saving data cache
+Preprocessing finished. Time elapsed: 0.30s
+Loading finetuned checkpoint
+
+================================================== 
+TESTING 
+==================================================
+Test Loss 0.6393 | Test Accuracy 0.7556
+Wrote profile results to train.py.lprof
+Timer unit: 1e-06 s
+
+Total time: 1217.93 s
+File: /Users/ralphangelo/Documents/4th Year/2nd Term/MSLABS1/Repositories/Filipino-Text-Benchmarks/utils/training.py
+Function: run_finetuning at line 96
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    96                                           @line_profiler.profile
+    97                                           def run_finetuning(args):
+    98         1        943.0    943.0      0.0      torch.manual_seed(args.seed)
+    99         1       8569.0   8569.0      0.0      device = torch.device('mps' if torch.backends.mps.is_available() and not args.no_cuda else 'cpu')
+   100                                           
+   101                                               # Get text columns
+   102         1          1.0      1.0      0.0      t_columns = args.text_columns.split(',')
+   103         1          1.0      1.0      0.0      num_texts = len(t_columns)
+   104         1          0.0      0.0      0.0      if num_texts == 1: t_columns = t_columns[0]
+   105                                           
+   106                                               # Get label columns
+   107         1          0.0      0.0      0.0      l_columns = args.label_columns.split(',')
+   108         1          0.0      0.0      0.0      num_labels = len(l_columns)
+   109         1          0.0      0.0      0.0      if num_labels == 1: l_columns = l_columns[0]
+   110                                           
+   111         1          0.0      0.0      0.0      if args.fp16 and not APEX_AVAILABLE:
+   112                                                   print("FP16 toggle is on but Apex is not available. Using FP32 training.")
+   113                                           
+   114         1          1.0      1.0      0.0      if args.do_train:
+   115                                                   # Configure tokenizer
+   116         1     520632.0 520632.0      0.0          tokenizer = AutoTokenizer.from_pretrained(args.pretrained)
+   117         1          1.0      1.0      0.0          if args.add_token != '':
+   118         1          1.0      1.0      0.0              add_token = {'additional_special_tokens': args.add_token.split(',')}
+   119         1         92.0     92.0      0.0              added = tokenizer.add_special_tokens(add_token)
+   120                                                       
+   121         1          3.0      3.0      0.0          print('\n' + '=' * 50, '\nCONFIGURE FINETUNING SETUP', '\n' + '=' * 50)
+   122         1          2.0      2.0      0.0          if args.add_token != '': print("Addded {} special tokens:".format(added), args.add_token)
+   123                                           
+   124                                                   # Produce hash code for cache
+   125         1          2.0      2.0      0.0          f_string = args.train_data + args.valid_data + str(args.msl) + str(args.seed) + args.pretrained + str(args.data_pct)
+   126         1         10.0     10.0      0.0          hashed = 'cache_' + hashlib.md5(f_string.encode()).hexdigest() + '.pt'
+   127                                           
+   128                                                   # Produce the dataset if cache doesn't exist
+   129         1         36.0     36.0      0.0          if hashed not in os.listdir() or args.retokenize_data:
+   130         1          0.0      0.0      0.0              print("Producing dataset cache. This will take a while.")
+   131         1          1.0      1.0      0.0              s = time.time()
+   132                                           
+   133         1      11543.0  11543.0      0.0              df = pd.read_csv(args.train_data, lineterminator='\n').sample(frac=args.data_pct, random_state=args.seed)
+   134         1        566.0    566.0      0.0              text, labels = df[t_columns].values, df[l_columns].values
+   135         1     383419.0 383419.0      0.0              train_dataset = process_data(text, labels, tokenizer, msl=args.msl)
+   136                                           
+   137         1       5835.0   5835.0      0.0              df = pd.read_csv(args.valid_data, lineterminator='\n')
+   138         1        216.0    216.0      0.0              text, labels = df[t_columns].values, df[l_columns].values
+   139         1     142374.0 142374.0      0.0              valid_dataset = process_data(text, labels, tokenizer, msl=args.msl)
+   140                                           
+   141         1          1.0      1.0      0.0              if args.save_cache:
+   142         1          4.0      4.0      0.0                  print('Saving data cache')
+   143         1        147.0    147.0      0.0                  with open(hashed, 'wb') as f:
+   144         1      13504.0  13504.0      0.0                      torch.save([train_dataset, valid_dataset], f)
+   145                                           
+   146         1         10.0     10.0      0.0              print("Preprocessing finished. Time elapsed: {:.2f}s".format(time.time() - s))
+   147                                           
+   148                                                   # Load the dataset if the cache exists
+   149                                                   else:
+   150                                                       print('Cache found. Loading training and validation data.')
+   151                                                       with open(hashed, 'rb') as f:
+   152                                                           train_dataset, valid_dataset = torch.load(f)
+   153                                           
+   154                                                   # Produce dataloaders
+   155         1         16.0     16.0      0.0          train_sampler = data.RandomSampler(train_dataset)
+   156         1         88.0     88.0      0.0          train_loader = data.DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler)
+   157         1         16.0     16.0      0.0          valid_loader = data.DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False)
+   158                                           
+   159                                                   # Configure model
+   160         1     574528.0 574528.0      0.0          config = AutoConfig.from_pretrained(args.pretrained, num_labels=2 if num_labels == 1 else num_labels)
+   161         1          3.0      3.0      0.0          if args.random_init:
+   162                                                       print("Initializing new randomly-initialized model from configuration")
+   163                                                       model = AutoModelForSequenceClassification.from_config(config)
+   164                                                   else:
+   165         1          4.0      4.0      0.0              print("Loading from pretrained checkpoint")
+   166         1     605815.0 605815.0      0.0              model = AutoModelForSequenceClassification.from_pretrained(args.pretrained, config=config)
+   167         1     435548.0 435548.0      0.0          _ = model.resize_token_embeddings(len(tokenizer))
+   168         1      89589.0  89589.0      0.0          model = model.to(device)
+   169         1        265.0    265.0      0.0          print("Model has {:,} trainable parameters".format(sum(p.numel() for p in model.parameters() if p.requires_grad)))
+   170                                           
+   171                                                   # Configure loss function
+   172         1         38.0     38.0      0.0          criterion = torch.nn.CrossEntropyLoss() if num_labels == 1 else torch.nn.BCEWithLogitsLoss()
+   173                                           
+   174                                                   # Configure optimizer
+   175         1          1.0      1.0      0.0          if args.optimizer == 'adam':
+   176         1          0.0      0.0      0.0              no_decay = ["bias", "LayerNorm.weight"]
+   177         3        233.0     77.7      0.0              optimizer_grouped_parameters = [{"params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)], 
+   178         1          1.0      1.0      0.0                                              "weight_decay": args.weight_decay}, 
+   179         2        219.0    109.5      0.0                                              {"params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)], 
+   180         1          0.0      0.0      0.0                                              "weight_decay": 0.0}]
+   181         1     524861.0 524861.0      0.0              optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
+   182         1        631.0    631.0      0.0              optimizer.zero_grad()
+   183                                                   elif args.optimizer == 'lamb':
+   184                                                       from pytorch_lamb import Lamb
+   185                                                       optimizer = Lamb(model.parameters(), 
+   186                                                                        lr=args.learning_rate, 
+   187                                                                        weight_decay=args.weight_decay,
+   188                                                                        betas=(args.adam_b1, args.adam_b2))
+   189                                           
+   190                                                   # Configure FP16
+   191         1          1.0      1.0      0.0          if args.fp16 and APEX_AVAILABLE:
+   192                                                       print("Using FP16 training.")
+   193                                                       model, optimizer = amp.initialize(model, optimizer, opt_level=args.opt_level)
+   194                                           
+   195                                                   # Configure scheduler
+   196         1          0.0      0.0      0.0          if args.use_scheduler:
+   197         1         13.0     13.0      0.0              steps = len(train_loader) * args.epochs // args.accumulation
+   198         1         25.0     25.0      0.0              scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=int(steps * args.warmup_pct), num_training_steps=steps)
+   199                                                   else: scheduler = None
+   200                                           
+   201         1          9.0      9.0      0.0          print("Using learning rate {:.4E} and weight decay {:.4E}".format(args.learning_rate, args.weight_decay), end='')
+   202         1          2.0      2.0      0.0          print(" with scheduler using warmup pct {}".format(args.warmup_pct)) if args.use_scheduler else print("")
+   203                                           
+   204                                                   # Training proper
+   205         1          1.0      1.0      0.0          print('\n' + '=' * 50, '\nTRAINING', '\n' + '=' * 50)
+   206         1          6.0      6.0      0.0          print("Training batches: {} | Validation batches: {}".format(len(train_loader), len(valid_loader)))
+   207         4          3.0      0.8      0.0          for e in range(1, args.epochs + 1):
+   208         3 1011203053.0    3e+08     83.0              train_loss, train_acc = train(model, criterion, optimizer, train_loader, scheduler=scheduler, accumulation=args.accumulation, device=device, fp16=args.fp16)
+   209         3  145541152.0    5e+07     11.9              valid_loss, valid_acc = evaluate(model, criterion, valid_loader, device=device)
+   210         3         20.0      6.7      0.0              print("Epoch {:3} | Train Loss {:.4f} | Train Acc {:.4f} | Valid Loss {:.4f} | Valid Acc {:.4f}".format(e, train_loss, train_acc, valid_loss, valid_acc))
+   211                                           
+   212                                                       # Save the model
+   213         3     731941.0 243980.3      0.1              model.save_pretrained(args.checkpoint)
+   214         3     103644.0  34548.0      0.0              tokenizer.save_pretrained(args.checkpoint)
+   215                                                       #with open(args.checkpoint, 'wb') as f:
+   216                                                       #    torch.save(model.state_dict(), f)
+   217                                           
+   218         1          4.0      4.0      0.0      if args.do_eval:
+   219         1        379.0    379.0      0.0          print('\n' + '=' * 50, '\nBEGIN EVALUATION PROPER', '\n' + '=' * 50)
+   220                                           
+   221                                                   # Load saved tokenizer
+   222         1      23838.0  23838.0      0.0          tokenizer = AutoTokenizer.from_pretrained(args.checkpoint)
+   223                                           
+   224                                                   # Produce hash code for test cache
+   225         1          5.0      5.0      0.0          f_string = args.test_data + str(args.msl) + str(args.seed) + args.pretrained
+   226         1       7643.0   7643.0      0.0          hashed = 'cache_' + hashlib.md5(f_string.encode()).hexdigest() + '.pt'
+   227                                           
+   228                                                   # Produce the dataset if cache doesn't exist
+   229         1         98.0     98.0      0.0          if hashed not in os.listdir() or args.retokenize_data:
+   230         1          5.0      5.0      0.0              print("Producing test data cache. This will take a while.")
+   231         1          1.0      1.0      0.0              s = time.time()
+   232                                           
+   233         1      27883.0  27883.0      0.0              df = pd.read_csv(args.test_data, lineterminator='\n')
+   234         1       4739.0   4739.0      0.0              text, labels = df[t_columns].values, df[l_columns].values
+   235         1     259817.0 259817.0      0.0              test_dataset = process_data(text, labels, tokenizer, msl=args.msl)
+   236                                           
+   237         1          2.0      2.0      0.0              if args.save_cache:
+   238         1          6.0      6.0      0.0                  print('Saving data cache')
+   239         1        125.0    125.0      0.0                  with open(hashed, 'wb') as f:
+   240         1       7602.0   7602.0      0.0                      torch.save(test_dataset, f)
+   241                                           
+   242         1          8.0      8.0      0.0              print("Preprocessing finished. Time elapsed: {:.2f}s".format(time.time() - s))
+   243                                           
+   244                                                   # Load the dataset if the cache exists
+   245                                                   else:
+   246                                                       print('Cache found. Loading test data.')
+   247                                                       with open(hashed, 'rb') as f:
+   248                                                           test_dataset = torch.load(f)
+   249                                           
+   250                                                   # Dataloaders
+   251         1        403.0    403.0      0.0          test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+   252                                           
+   253                                                   # Produce the model
+   254         1          1.0      1.0      0.0          print("Loading finetuned checkpoint")
+   255         1     735488.0 735488.0      0.1          model = AutoModelForSequenceClassification.from_pretrained(args.checkpoint)
+   256         1     399944.0 399944.0      0.0          model = model.to(device)
+   257                                           
+   258         1        543.0    543.0      0.0          criterion = torch.nn.CrossEntropyLoss() if num_labels == 1 else torch.nn.BCEWithLogitsLoss()
+   259                                           
+   260                                                   # Testing proper
+   261         1         31.0     31.0      0.0          print('\n' + '=' * 50, '\nTESTING', '\n' + '=' * 50)
+   262         1   55557943.0    6e+07      4.6          test_loss, test_acc = evaluate(model, criterion, test_loader, device=device)
+   263         1        946.0    946.0      0.0          print("Test Loss {:.4f} | Test Accuracy {:.4f}".format(test_loss, test_acc))
+   264                                           
+   265                                               # Logging
+   266         1         27.0     27.0      0.0      if not args.do_train: train_loss, train_acc, valid_loss, valid_acc = None, None, None, None
+   267         1          1.0      1.0      0.0      if not args.do_eval: test_loss, test_acc = None, None
+   268         1          3.0      3.0      0.0      return train_loss, train_acc, valid_loss, valid_acc, test_loss, test_acc
+
